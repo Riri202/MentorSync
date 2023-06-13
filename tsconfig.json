@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    // "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "declaration": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "importHelpers": true,
+    "lib": ["ES2020"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "outDir": "build",
+    "paths": {
+      "*": ["*", "src/*"]
+    },
+    "resolveJsonModule": true,
+    //    "rootDir": "src",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "ES2020"
+  },
+  "exclude": ["**/*.spec.ts", "node_modules", "vendor", "build", "public"],
+  "include": [
+    "**/*.ts",
+    "**/*.json"
+  ]
+}
