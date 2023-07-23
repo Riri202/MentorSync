@@ -1,5 +1,5 @@
 import { model, Schema } from 'mongoose';
-import { TimeSlotDocument } from './TimeSlot';
+// import { TimeSlotDocument } from './TimeSlot';
 
 // each mentor can select from a list of time slots that users will then be able to select from to book a session
 // there will be a time slot model. when a new session is created a new slot is created and that is added to the new session's slot field 
@@ -8,9 +8,10 @@ import { TimeSlotDocument } from './TimeSlot';
 interface sessionDocument {
   mentor: string;
   mentee: string;
-  questions: string | undefined;
-  timeSlot: TimeSlotDocument;
+  note: string | undefined;
+  // timeSlot: TimeSlotDocument;
   sessionDate: Date;
+  time: string;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -28,13 +29,17 @@ const sessionSchema = new Schema(
       ref: 'User',
       required: true,
     },
-    questions: {
+    note: {
       type: String
     },
-    timeSlot: {
-      type: Schema.Types.ObjectId,
-      ref: 'TimeSlot',
-      required: true,
+    // timeSlot: {
+    //   type: Schema.Types.ObjectId,
+    //   ref: 'TimeSlot',
+    //   required: true,
+    // },
+    time: {
+      type: String,
+      required: true
     },
     sessionDate: {
       type: Date,
