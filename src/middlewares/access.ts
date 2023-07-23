@@ -16,3 +16,7 @@ export const isUserRole = (req, res, next) => {
     if (req.user.role === USER_ROLE) return next()
 return unauthorized(res)
 }
+export const isUserOrMentorRole = (req, res, next) => {
+    if (req.user.role === USER_ROLE || req.user.role === MENTOR_ROLE) return next()
+return unauthorized(res)
+}

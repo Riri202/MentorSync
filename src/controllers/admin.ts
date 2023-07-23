@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
+import Review from '../models/User';
 
 export const getAllAdmins = () => console.log('Get admins');
 
@@ -35,5 +36,15 @@ export const updateUserRole = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.log('UPDATE_USER_ROLE_ERROR', error);
     return res.status(500).send({ message: error.message });
+  }
+};
+
+export const deleteSessionReview = async (req, res) => {
+  const { reviewId } = req.params;
+  try {
+    await Review.deleteOne({ _id: reviewId });
+    return res.status(200).send({ message: 'Review successfully deleted' });
+  } catch (error: any) {
+    res.status(500).send({ message: error.message });
   }
 };
