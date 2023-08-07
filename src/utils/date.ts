@@ -4,7 +4,7 @@ import parse from 'date-fns/parse';
 
 export const get30MinuteIntervals = (startTime: string, endTime: string) => {
   const intervals: string[] = [];
-  const formatStr = 'hh:mm a';
+  const formatStr = 'hh:mm';
   let current = parse(startTime, formatStr, new Date());
   const end = parse(endTime, formatStr, new Date());
   while (current < end) {

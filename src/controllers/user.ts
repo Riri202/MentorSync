@@ -10,6 +10,18 @@ import { get30MinuteIntervals } from '../utils/date';
 import Availability from '../models/Availability';
 import Review from '../models/Review';
 
+const checkIfUserOrMentorExists = async (res: Response, id: string, role: string) => {
+  const existing = await User.findOne({
+    _id: id,
+    role,
+  }).select('-password');
+
+  if (!existing)
+    return res
+      .status(404)
+      .send({ message: `${role.charAt(0).toUpperCase()}${role.slice(1)} not found` });
+};
+
 export const getAllMentors = async (req: Request, res: Response) => {
   try {
     const data = await User.find(
@@ -40,7 +52,7 @@ export const getMentor = async (req, res) => {
 export const createMentorSchedule = async (req, res) => {
   const { mentorId } = req.params;
   const { startTime, endTime, dayOfWeek } = req.body;
-  //TODO: make sure start and end time are in correct 'hh:mm a' format
+  //TODO: make sure start and end time are in correct 'hh:mm' format
   const timeSlots = get30MinuteIntervals(startTime, endTime);
   try {
     const data = await new Availability({
@@ -90,7 +102,8 @@ export const getMentorSchedule = async (req, res) => {
 
   try {
     const data = await Availability.find({ mentor: mentorId }).populate(
-      'mentor',  '-password'
+      'mentor',
+      '-password'
     );
     res.status(200).send({ data });
   } catch (error: any) {
@@ -101,24 +114,26 @@ export const getMentorSchedule = async (req, res) => {
 
 export const createMentorshipSession = async (req, res) => {
   const { mentor, note, sessionDate, time } = req.body;
-  const mentee = req.user._id;
-  const dayOfWeek = getDay(new Date(sessionDate));
-  const toDate = endOfDay(new Date(sessionDate));
-  const fromDate = startOfDay(new Date(sessionDate));
-
-  const availableTimeslots: string[] = [];
 
   if (!mentor || !time || !sessionDate)
     return res
       .status(400)
       .send({ message: 'Mentor, session date and time slot are required' });
 
+  await checkIfUserOrMentorExists(res, mentor, 'mentor');
+
+  const mentee = req.user._id;
+  const dayOfWeek = getDay(new Date(sessionDate));
+  const toDate = endOfDay(new Date(sessionDate));
+  const fromDate = startOfDay(new Date(sessionDate));
+
+  const availableTimeslots: string[] = [];
   const schedule = await Availability.find({ mentor, dayOfWeek });
 
   if (!schedule.length)
-    return res
-      .status(400)
-      .send({ message: 'Mentor is not available this day of the week' });
+    return res.status(400).send({
+      message: 'Sorry, this mentor is not available for the selected date',
+    });
 
   const bookedSessionsForSelectedDate = await Session.find({
     mentor,
@@ -135,18 +150,16 @@ export const createMentorshipSession = async (req, res) => {
         availableTimeslots.push(slot);
     });
   }
-
-  if (!availableTimeslots.includes(time))
-    return res
-      .status(400)
-      .send({ message: 'Mentor is no longer available for the selected time' });
-
+  if (bookedSessionsForSelectedDate.length && !availableTimeslots.includes(time))
+    return res.status(400).send({
+      message: 'Sorry, this mentor is not available for the selected time',
+    });
   try {
     const data = await new Session({
       mentor,
       mentee,
       note,
-      sessionDate: new Date(sessionDate),
+      sessionDate,
       time,
     }).save();
     res.status(200).send({ message: 'Session created successfully', data });
@@ -216,8 +229,13 @@ export const getSessions = async (req, res) => {
   let data: SessionDocument[];
   try {
     if (role === USER_ROLE) {
-      data = await Session.find({ mentee: _id }).populate('mentor').populate('mentee');
-    } else data = await Session.find({ mentor: _id }).populate('mentor').populate('mentee');
+      data = await Session.find({ mentee: _id })
+        .populate('mentor')
+        .populate('mentee');
+    } else
+      data = await Session.find({ mentor: _id })
+        .populate('mentor')
+        .populate('mentee');
     return res.status(200).send({ data });
   } catch (error: any) {
     res.status(500).send({ message: error.message });
@@ -230,8 +248,13 @@ export const getSession = async (req, res) => {
   let data: SessionDocument | null;
   try {
     if (role === USER_ROLE) {
-      data = await Session.findOne({ mentee: userId, _id: sessionId }).populate('mentor',  '-password').populate('mentee',  '-password');
-    } else data = await Session.findOne({ mentor: userId, _id: sessionId }).populate('mentor',  '-password').populate('mentee', '-password');
+      data = await Session.findOne({ mentee: userId, _id: sessionId })
+        .populate('mentor', '-password')
+        .populate('mentee', '-password');
+    } else
+      data = await Session.findOne({ mentor: userId, _id: sessionId })
+        .populate('mentor', '-password')
+        .populate('mentee', '-password');
     return res.status(200).send({ data });
   } catch (error: any) {
     res.status(500).send({ message: error.message });
