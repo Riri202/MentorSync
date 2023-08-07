@@ -1,7 +1,7 @@
 import { model, Schema } from 'mongoose';
 
 // TODO: admin should be able to view a list of users who want to be mentors and update their role or reject their application to be a mentor
-  interface UserDocument {
+  export interface UserDocument {
     firstname: string;
     lastname: string;
     email: string;

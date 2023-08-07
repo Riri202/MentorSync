@@ -59,11 +59,11 @@ export const signup = async (req, res) => {
         role: newUser.role,
         token
       };
-      return res.status(200).send({ message: 'sign-up successful', data });
+      return res.status(200).send({ message: 'sign-up successful', ...data });
     }
   } catch (error: any) {
     console.log('SIGN_UP_ERROR', error);
-    return res.status(500).send({ message: error.message });
+    return res.status(500).send({ error: error.message });
   }
 };
 
@@ -91,9 +91,9 @@ export const signin = async (req, res) => {
       role: user?.role,
       token,
     };
-    return res.status(200).send({ message: 'sign-in succesful', data });
+    return res.status(200).send({ message: 'sign-in succesful', ...data });
   } catch (error: any) {
     console.log('SIGN_IN_ERROR', error);
-    return res.status(500).send({ message: error.message });
+    return res.status(500).send({ error: error.message });
   }
 };
