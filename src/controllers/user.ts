@@ -84,14 +84,18 @@ export const createMentorSchedule = async (req, res) => {
 };
 
 export const updateMentorSchedule = async (req, res) => {
-  const { startTime, endTime, availabilityId } = req.body;
-  //TODO: make sure start and end time are in correct 'hh:mm a' format and check that person making request and mentorId are same
-  const timeSlots = get30MinuteIntervals(startTime, endTime);
+  const { startTime, endTime, isAvailable, availabilityId } = req.body;
+  const { mentorId } = req.params;
+  const userId = req.user._id.toString();
+  if (userId !== mentorId)
+    return res.status(403).send({ message: 'You are not allowed to do this' });
+  
+    const timeSlots = get30MinuteIntervals(startTime, endTime);
 
   try {
     const data = await Availability.findOneAndUpdate(
       { _id: availabilityId },
-      { $set: { startTime, endTime, timeSlots } },
+      { $set: { startTime, endTime, timeSlots, isAvailable } },
       { new: true }
     ).exec();
     res.status(200).send({ data });
@@ -253,7 +257,9 @@ export const getSessions = async (req, res) => {
   const sessionExpirationTime = addMinutes(new Date(), 30);
 
   try {
-    data.nonExpiredSessions = await Session.find(getFiltersForSessions(role, userId))
+    data.nonExpiredSessions = await Session.find(
+      getFiltersForSessions(role, userId)
+    )
       .populate('mentor', '-password')
       .populate('mentee', '-password');
     data.expiredSessions = await Session.find(
@@ -414,7 +420,7 @@ export const reviewSession = async (req, res) => {
 };
 
 export const getReviewedSessions = async (req, res) => {
-  const { role, _id: userId } = req.user;
+  const { role, userId } = req.query;
   let data: ReviewDocument[];
   try {
     if (role === USER_ROLE) {
