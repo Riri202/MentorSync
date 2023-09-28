@@ -36,4 +36,6 @@ const availabilitySchema = new Schema(
   { timestamps: true }
 );
 
+availabilitySchema.add({isAvailable: {type: Boolean, default: true}})
+
 export default model('Availability', availabilitySchema);

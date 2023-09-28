@@ -1,10 +1,39 @@
 import * as bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { BCRYPT_SALT } from '../constants';
-import User from '../models/User';
+import { BCRYPT_SALT, MENTOR_ROLE } from '../constants';
+import User, { UserDocument } from '../models/User';
+import { get30MinuteIntervals } from '../utils/date';
+import Availability from '../models/Availability';
 
 const generateToken = (id: string) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+export type AvailabilityArray = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  mentor: string;
+  timeSlots: string[];
+}[];
+
+export const createDefaultAvailabilites = (mentor: string) => {
+  const startTime = '09:00';
+  const endTime = '17:00';
+  const defaultAvailabilities: AvailabilityArray = [];
+  for (let i = 0; i < 7; i++) {
+    const timeSlots = get30MinuteIntervals(startTime, endTime);
+    const newAvailability = {
+      dayOfWeek: i,
+      startTime,
+      endTime,
+      mentor,
+      timeSlots,
+      isAvailable: (i === 0 || i === 6) ? false : true,
+    };
+    defaultAvailabilities.push(newAvailability);
+  }
+  return defaultAvailabilities;
+};
 
 export const signup = async (req, res) => {
   const {
@@ -33,7 +62,7 @@ export const signup = async (req, res) => {
     return res.status(500).send({ message: 'password hashing unsuccessful' });
 
   try {
-    const newUser = await new User({
+    const newUser: UserDocument = await new User({
       firstname,
       lastname,
       email,
@@ -57,8 +86,13 @@ export const signup = async (req, res) => {
         occupation: newUser.occupation,
         expertise: newUser.expertise,
         role: newUser.role,
-        token
+        token,
       };
+      // if user is a mentor, create default mentor schedule
+      if (newUser.role === MENTOR_ROLE) {
+        const defaultAvailabilities = createDefaultAvailabilites(newUser._id);
+        await Availability.insertMany(defaultAvailabilities);
+      }
       return res.status(200).send({ message: 'sign-up successful', ...data });
     }
   } catch (error: any) {

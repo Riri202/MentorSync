@@ -1,4 +1,14 @@
 import { model, Schema } from 'mongoose';
+import { SessionDocument } from './Session';
+import { UserDocument } from './User';
+
+export interface ReviewDocument {
+  session: SessionDocument;
+  mentor: UserDocument;
+  mentee: UserDocument;
+  rating: number;
+  review: string;
+}
 
 const reviewSchema = new Schema({
   session: {
@@ -16,13 +26,13 @@ const reviewSchema = new Schema({
     ref: 'User',
     required: true,
   },
-  score: {
+  rating: {
     type: Number,
     required: true,
   },
-  remark: {
+  review: {
     type: String,
   },
 }, {timestamps: true});
 
-export default model('Review', reviewSchema);
+export default model<ReviewDocument>('Review', reviewSchema);

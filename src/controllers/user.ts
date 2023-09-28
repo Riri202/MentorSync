@@ -8,18 +8,23 @@ import Session, { SessionDocument } from '../models/Session';
 import getDay from 'date-fns/getDay';
 import { get30MinuteIntervals } from '../utils/date';
 import Availability from '../models/Availability';
-import Review from '../models/Review';
+import Review, { ReviewDocument } from '../models/Review';
+import addMinutes from 'date-fns/addMinutes';
 
-const checkIfUserOrMentorExists = async (res: Response, id: string, role: string) => {
+const checkIfUserOrMentorExists = async (
+  res: Response,
+  id: string,
+  role: string
+) => {
   const existing = await User.findOne({
     _id: id,
     role,
   }).select('-password');
 
   if (!existing)
-    return res
-      .status(404)
-      .send({ message: `${role.charAt(0).toUpperCase()}${role.slice(1)} not found` });
+    return res.status(404).send({
+      message: `${role.charAt(0).toUpperCase()}${role.slice(1)} not found`,
+    });
 };
 
 export const getAllMentors = async (req: Request, res: Response) => {
@@ -36,15 +41,14 @@ export const getAllMentors = async (req: Request, res: Response) => {
   }
 };
 
-export const getMentor = async (req, res) => {
-  const { mentorId } = req.params;
-  if (!mentorId)
-    return res.status(400).send({ message: 'Mentor id is required' });
+export const getUser = async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).send({ message: 'User id is required' });
   try {
-    const data = await User.findById(mentorId).select('-password');
+    const data = await User.findById(userId).select('-password');
     res.status(200).send({ data });
   } catch (error: any) {
-    console.log('GET_MENTOR_ERROR', error);
+    console.log('GET_USER_ERROR', error);
     res.status(500).send({ message: error.message });
   }
 };
@@ -80,14 +84,18 @@ export const createMentorSchedule = async (req, res) => {
 };
 
 export const updateMentorSchedule = async (req, res) => {
-  const { startTime, endTime, availabilityId } = req.body;
-  //TODO: make sure start and end time are in correct 'hh:mm a' format and check that person making request and mentorId are same
-  const timeSlots = get30MinuteIntervals(startTime, endTime);
+  const { startTime, endTime, isAvailable, availabilityId } = req.body;
+  const { mentorId } = req.params;
+  const userId = req.user._id.toString();
+  if (userId !== mentorId)
+    return res.status(403).send({ message: 'You are not allowed to do this' });
+  
+    const timeSlots = get30MinuteIntervals(startTime, endTime);
 
   try {
     const data = await Availability.findOneAndUpdate(
       { _id: availabilityId },
-      { $set: { startTime, endTime, timeSlots } },
+      { $set: { startTime, endTime, timeSlots, isAvailable } },
       { new: true }
     ).exec();
     res.status(200).send({ data });
@@ -150,7 +158,10 @@ export const createMentorshipSession = async (req, res) => {
         availableTimeslots.push(slot);
     });
   }
-  if (bookedSessionsForSelectedDate.length && !availableTimeslots.includes(time))
+  if (
+    bookedSessionsForSelectedDate.length &&
+    !availableTimeslots.includes(time)
+  )
     return res.status(400).send({
       message: 'Sorry, this mentor is not available for the selected time',
     });
@@ -212,6 +223,12 @@ export const getMentorTimeSlots = async (req, res) => {
 export const updateSessionStatus = async (req, res) => {
   const { sessionId } = req.params;
   const { status } = req.body;
+
+  if (!status)
+    return res.status(400).send({
+      message: 'Please provide session status',
+    });
+
   try {
     const data = await Session.findByIdAndUpdate(sessionId, {
       $set: { status },
@@ -224,18 +241,36 @@ export const updateSessionStatus = async (req, res) => {
   }
 };
 
+const getFiltersForSessions = (role: string, userId: string, filters?: any) => {
+  if (role === USER_ROLE) {
+    return { ...filters, mentee: userId };
+  }
+  return { ...filters, mentor: userId };
+};
+
 export const getSessions = async (req, res) => {
-  const { role, _id } = req.user;
-  let data: SessionDocument[];
+  const { role, userId } = req.query;
+  const data: {
+    expiredSessions: SessionDocument[];
+    nonExpiredSessions: SessionDocument[];
+  } = { expiredSessions: [], nonExpiredSessions: [] };
+  const sessionExpirationTime = addMinutes(new Date(), 30);
+
   try {
-    if (role === USER_ROLE) {
-      data = await Session.find({ mentee: _id })
-        .populate('mentor')
-        .populate('mentee');
-    } else
-      data = await Session.find({ mentor: _id })
-        .populate('mentor')
-        .populate('mentee');
+    data.nonExpiredSessions = await Session.find(
+      getFiltersForSessions(role, userId)
+    )
+      .populate('mentor', '-password')
+      .populate('mentee', '-password');
+    data.expiredSessions = await Session.find(
+      getFiltersForSessions(role, userId, {
+        sessionDate: { $lte: sessionExpirationTime },
+        status: 'accepted',
+      })
+    )
+      .populate('mentor', '-password')
+      .populate('mentee', '-password');
+
     return res.status(200).send({ data });
   } catch (error: any) {
     res.status(500).send({ message: error.message });
@@ -261,21 +296,144 @@ export const getSession = async (req, res) => {
   }
 };
 
+export const getExpiredSessionsForReview = async (req, res) => {
+  const { _id: userId } = req.user;
+  const sessionExpirationTime = addMinutes(new Date(), 30);
+  try {
+    const data: SessionDocument[] = await Session.aggregate([
+      {
+        $match: {
+          mentee: userId,
+          sessionDate: { $lte: sessionExpirationTime },
+          status: 'accepted',
+        },
+      },
+      {
+        $lookup: {
+          from: 'reviews', // this has to be how the collection name is in the db, it's "reviews" in mongodb atlas but in the model in this repo it is "Review". Same for other models.
+          localField: '_id',
+          foreignField: 'session',
+          as: 'reviews',
+        },
+      },
+      {
+        $match: {
+          reviews: { $size: 0 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'mentor',
+          foreignField: '_id',
+          as: 'mentorInfo',
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'mentee',
+          foreignField: '_id',
+          as: 'menteeInfo',
+        },
+      },
+      {
+        $project: {
+          note: 1,
+          time: 1,
+          sessionDate: 1,
+          status: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          mentee: {
+            $arrayElemAt: [
+              {
+                $map: {
+                  input: '$menteeInfo',
+                  in: {
+                    _id: '$$this._id',
+                    firstname: '$$this.firstname',
+                    lastname: '$$this.lastname',
+                    email: '$$this.email',
+                    address: '$$this.address',
+                    bio: '$$this.bio',
+                    occupation: '$$this.occupation',
+                    expertise: '$$this.expertise',
+                    role: '$$this.role',
+                    createdAt: '$$this.createdAt',
+                    updatedAt: '$$this.updatedAt',
+                  },
+                },
+              },
+              0,
+            ],
+          },
+          mentor: {
+            $arrayElemAt: [
+              {
+                $map: {
+                  input: '$mentorInfo',
+                  in: {
+                    _id: '$$this._id',
+                    firstname: '$$this.firstname',
+                    lastname: '$$this.lastname',
+                    email: '$$this.email',
+                    address: '$$this.address',
+                    bio: '$$this.bio',
+                    occupation: '$$this.occupation',
+                    expertise: '$$this.expertise',
+                    role: '$$this.role',
+                    createdAt: '$$this.createdAt',
+                    updatedAt: '$$this.updatedAt',
+                  },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+    ]);
+    res.status(200).send({ data });
+  } catch (error: any) {
+    res.status(500).send({ message: error.message });
+  }
+};
+
 export const reviewSession = async (req, res) => {
-  const { sessionId } = req.params;
-  const { mentor, score, remark } = req.body;
+  const { mentor, rating, review, session } = req.body;
   const mentee = req.user._id;
   try {
-    const data = await new Review({
-      session: sessionId,
+    const data: ReviewDocument = await new Review({
+      session,
       mentor,
       mentee,
-      score,
-      remark,
+      rating,
+      review,
     }).save();
     return res
       .status(200)
       .send({ message: 'Session reviewed successfully', data });
+  } catch (error: any) {
+    res.status(500).send({ message: error.message });
+  }
+};
+
+export const getReviewedSessions = async (req, res) => {
+  const { role, userId } = req.query;
+  let data: ReviewDocument[];
+  try {
+    if (role === USER_ROLE) {
+      data = await Review.find({ mentee: userId })
+        .populate('mentor', '-password')
+        .populate('mentee', '-password')
+        .populate('session');
+    } else
+      data = await Review.find({ mentor: userId })
+        .populate('mentor', '-password')
+        .populate('mentee', '-password')
+        .populate('session');
+    return res.status(200).send({ data });
   } catch (error: any) {
     res.status(500).send({ message: error.message });
   }
