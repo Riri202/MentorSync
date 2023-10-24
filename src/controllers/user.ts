@@ -10,6 +10,7 @@ import { get30MinuteIntervals } from '../utils/date';
 import Availability from '../models/Availability';
 import Review, { ReviewDocument } from '../models/Review';
 import addMinutes from 'date-fns/addMinutes';
+import format from 'date-fns/format';
 
 const checkIfUserOrMentorExists = async (
   res: Response,
@@ -89,8 +90,8 @@ export const updateMentorSchedule = async (req, res) => {
   const userId = req.user._id.toString();
   if (userId !== mentorId)
     return res.status(403).send({ message: 'You are not allowed to do this' });
-  
-    const timeSlots = get30MinuteIntervals(startTime, endTime);
+
+  const timeSlots = get30MinuteIntervals(startTime, endTime);
 
   try {
     const data = await Availability.findOneAndUpdate(
@@ -109,10 +110,9 @@ export const getMentorSchedule = async (req, res) => {
   const { mentorId } = req.params;
 
   try {
-    const data = await Availability.find({ mentor: mentorId }).populate(
-      'mentor',
-      '-password'
-    );
+    const data = await Availability.find({ mentor: mentorId })
+      .populate('mentor', '-password')
+      .sort({ dayOfWeek: 'asc' });
     res.status(200).send({ data });
   } catch (error: any) {
     console.log(error);
@@ -250,32 +250,76 @@ const getFiltersForSessions = (role: string, userId: string, filters?: any) => {
 
 export const getSessions = async (req, res) => {
   const { role, userId } = req.query;
+  type SessionsGroupedByDate = {
+     [key: string]: SessionDocument[] ;
+  }
   const data: {
-    expiredSessions: SessionDocument[];
-    nonExpiredSessions: SessionDocument[];
-  } = { expiredSessions: [], nonExpiredSessions: [] };
+    accepted: SessionsGroupedByDate ;
+    rejected: SessionsGroupedByDate;
+    pending: SessionsGroupedByDate;
+    expired: SessionsGroupedByDate;
+  } = { accepted: {}, rejected: {}, pending: {}, expired: {} };
   const sessionExpirationTime = addMinutes(new Date(), 30);
 
   try {
-    data.nonExpiredSessions = await Session.find(
-      getFiltersForSessions(role, userId)
+    const ungroupedAccepted = await Session.find(
+      getFiltersForSessions(role, userId, {
+        sessionDate: { $gt: sessionExpirationTime },
+        status: 'accepted',
+      })
     )
       .populate('mentor', '-password')
-      .populate('mentee', '-password');
-    data.expiredSessions = await Session.find(
+      .populate('mentee', '-password')
+      .sort({sessionDate: -1});
+    const ungroupedExpired = await Session.find(
       getFiltersForSessions(role, userId, {
         sessionDate: { $lte: sessionExpirationTime },
         status: 'accepted',
       })
     )
       .populate('mentor', '-password')
-      .populate('mentee', '-password');
-
+      .populate('mentee', '-password')
+      .sort({sessionDate: -1});
+    const ungroupedRejected = await Session.find(
+      getFiltersForSessions(role, userId, {
+        status: 'rejected',
+      })
+    )
+      .populate('mentor', '-password')
+      .populate('mentee', '-password')
+      .sort({sessionDate: -1});
+    const ungroupedPending = await Session.find(
+      getFiltersForSessions(role, userId, {
+        status: 'pending',
+      })
+    )
+      .populate('mentor', '-password')
+      .populate('mentee', '-password')
+      .sort({sessionDate: -1});
+      data.accepted = groupSessionsByDate(ungroupedAccepted);
+      data.expired = groupSessionsByDate(ungroupedExpired);
+      data.pending = groupSessionsByDate(ungroupedPending);
+      data.rejected = groupSessionsByDate(ungroupedRejected);
     return res.status(200).send({ data });
   } catch (error: any) {
     res.status(500).send({ message: error.message });
+    console.log(error)
   }
 };
+
+const groupSessionsByDate = (sessions: SessionDocument[]) => {
+  const groupedSessions = {};
+
+sessions.forEach((session) => {
+  const date = format(new Date(session.sessionDate), 'yyyy-MM'); // Extract the date without time
+  if (!groupedSessions[date]) {
+    groupedSessions[date] = [];
+  }
+  groupedSessions[date].push(session);
+});
+return groupedSessions;
+}
+
 
 export const getSession = async (req, res) => {
   const { role, _id: userId } = req.user;
