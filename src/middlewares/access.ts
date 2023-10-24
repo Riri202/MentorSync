@@ -1,6 +1,6 @@
 import { ADMIN_ROLE, MENTOR_ROLE, USER_ROLE } from "../constants/index"
 
-const unauthorized = (res) => res.status(403).send({messsage: 'You are not authorized to perform this action'})
+const unauthorized = (res) => res.status(403).send({message: 'You are not authorized to perform this action'})
 
 export const isAdminRole = (req, res, next) => {
     if (req?.user?.role === ADMIN_ROLE) return next()
