@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "This is the backend for the MentorSync app",
   "main": "app.ts",
+  "type": "module", 
   "dependencies": {
     "bcrypt": "^5.1.0",
     "cookie-session": "^2.0.0",
