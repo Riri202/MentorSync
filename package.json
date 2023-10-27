@@ -43,5 +43,8 @@
     "start": "node app.ts"
   },
   "author": "Rita-Maria Oladokun",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": {
+    "node": "14.x"
+  }
 }
