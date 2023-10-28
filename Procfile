@@ -1,1 +1,1 @@
- web: node ./src/app.mjs
+ web: node ./dist/app.js
