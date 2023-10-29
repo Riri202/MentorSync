@@ -1,8 +1,8 @@
 import {Router} from 'express'
-import auth from '../routes/auth'
-import admin from '../routes/admin'
-import onetimeScripts from '../routes/onetime-scripts'
-import usersAndMentors from '../routes/user'
+import auth from './auth'
+import admin from './admin'
+import onetimeScripts from './onetime-scripts'
+import usersAndMentors from './user'
 import {verifyAuth} from '../middlewares/auth'
 import {isAdminRole} from '../middlewares/access'
 

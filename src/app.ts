@@ -3,8 +3,8 @@ require("dotenv").config();
 import express from 'express';
 import cors from 'cors';
 import cookieSession from "cookie-session";
-import routes from './routes/index.ts';
-import { connectToDB } from './config/db.ts';
+import routes from './routes/index';
+import { connectToDB } from './config/db';
 
 // TODO:  implement video call appointments too. set up appointments and use socket.io to inform mentors of new appointments
 // TODO: incorperate a paid mentorship session feature
