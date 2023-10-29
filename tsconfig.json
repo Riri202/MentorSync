@@ -11,7 +11,7 @@
     "module": "commonjs",
     // "moduleResolution": "node",
     "noImplicitAny": false,
-    "outDir": "./build",
+    "outDir": "build",
     // "paths": {
     //   "*": ["*", "src/*"]
     // },
@@ -22,5 +22,5 @@
     "strict": true,
     "target": "ES2016"
   },
-  "include": [ "src/**/*"]
+  "include": [ "src/**/*.ts"]
 }
