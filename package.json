@@ -2,7 +2,7 @@
   "name": "mentor-sync-backend",
   "version": "1.0.0",
   "description": "This is the backend for the MentorSync app",
-  "main": "src/app.ts",
+  "main": "build/index.js",
   "dependencies": {
     "bcrypt": "^5.1.0",
     "cookie-session": "^2.0.0",
