@@ -11,7 +11,7 @@
     "module": "commonjs",
     // "moduleResolution": "node",
     "noImplicitAny": false,
-    "outDir": "build",
+    "outDir": "dist",  // value should be "build" for heroku deployment
     // "paths": {
     //   "*": ["*", "src/*"]
     // },

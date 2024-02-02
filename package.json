@@ -16,7 +16,9 @@
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.1.0",
     "nodemon": "^2.0.22",
+    "pre-commit": "^1.2.2",
     "prettier": "^2.8.8",
+    "rifraf": "^2.0.3",
     "typescript": "^5.0.4"
   },
   "devDependencies": {
@@ -44,6 +46,9 @@
     "build": "tsc",
     "postinstall": "npm run build"
   },
+  "pre-commit": [
+    "build"
+],
   "author": "Rita-Maria Oladokun",
   "license": "ISC",
   "engines": {

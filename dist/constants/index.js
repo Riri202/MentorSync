@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SESSION_STATUS_REJECTED = exports.SESSION_STATUS_ACCEPTED = exports.SESSION_STATUS_PENDING = exports.MENTOR_ROLE = exports.USER_ROLE = exports.ADMIN_ROLE = exports.BCRYPT_SALT = void 0;
+exports.BCRYPT_SALT = 10;
+exports.ADMIN_ROLE = 'admin';
+exports.USER_ROLE = 'user';
+exports.MENTOR_ROLE = 'mentor';
+exports.SESSION_STATUS_PENDING = 'pending';
+exports.SESSION_STATUS_ACCEPTED = 'accepted';
+exports.SESSION_STATUS_REJECTED = 'rejected';
